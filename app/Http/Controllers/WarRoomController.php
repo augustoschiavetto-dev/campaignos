@@ -78,9 +78,24 @@ class WarRoomController extends Controller
         
         if (Schema::hasTable('relacionamentos')) {
             $totalContatos = DB::table('relacionamentos')->where('status', 'ativo')->count();
-            $totalApoiadores = DB::table('relacionamentos')->where('status', 'ativo')->where('tipo_relacionamento', 'apoiador')->count();
-            $totalLiderancas = DB::table('relacionamentos')->where('status', 'ativo')->where('tipo_relacionamento', 'lideranca')->count();
-            $totalVoluntarios = DB::table('relacionamentos')->where('status', 'ativo')->where('tipo_relacionamento', 'voluntario')->count();
+            $totalApoiadores = DB::table('relacionamentos')
+                ->join('relacionamento_tipo', 'relacionamentos.id', '=', 'relacionamento_tipo.relacionamento_id')
+                ->join('tipos_relacionamento', 'relacionamento_tipo.tipo_relacionamento_id', '=', 'tipos_relacionamento.id')
+                ->where('relacionamentos.status', 'ativo')
+                ->where('tipos_relacionamento.nome', 'apoiador')
+                ->count();
+            $totalLiderancas = DB::table('relacionamentos')
+                ->join('relacionamento_tipo', 'relacionamentos.id', '=', 'relacionamento_tipo.relacionamento_id')
+                ->join('tipos_relacionamento', 'relacionamento_tipo.tipo_relacionamento_id', '=', 'tipos_relacionamento.id')
+                ->where('relacionamentos.status', 'ativo')
+                ->where('tipos_relacionamento.nome', 'lideranca')
+                ->count();
+            $totalVoluntarios = DB::table('relacionamentos')
+                ->join('relacionamento_tipo', 'relacionamentos.id', '=', 'relacionamento_tipo.relacionamento_id')
+                ->join('tipos_relacionamento', 'relacionamento_tipo.tipo_relacionamento_id', '=', 'tipos_relacionamento.id')
+                ->where('relacionamentos.status', 'ativo')
+                ->where('tipos_relacionamento.nome', 'voluntario')
+                ->count();
             $contatosSemana = DB::table('relacionamentos')
                 ->where('status', 'ativo')
                 ->where('created_at', '>=', now()->subDays(7))
