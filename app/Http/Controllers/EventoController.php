@@ -110,6 +110,86 @@ class EventoController extends Controller
         return redirect()->route('eventos.index')->with('success', 'Evento agendado com sucesso!');
     }
 
+    public function update(Request $request, int $id)
+    {
+        if (!auth()->user()->hasRole(['admin', 'coordenador', 'agenda']) && !auth()->user()->can('eventos.editar')) {
+            abort(403, 'Acesso não autorizado.');
+        }
+
+        $evento = Evento::findOrFail($id);
+        $anterior = $evento->toArray();
+
+        $validated = $request->validate([
+            'titulo' => 'required|string|max:150',
+            'tipo' => 'required|string|max:50',
+            'descricao' => 'nullable|string',
+            'data_hora_inicio' => 'required|date',
+            'data_hora_fim' => 'required|date|after:data_hora_inicio',
+            'endereco' => 'nullable|string|max:255',
+            'bairro_id' => 'nullable|exists:bairros,id',
+            'responsavel_id' => 'nullable|exists:users,id',
+            'prioridade' => 'required|in:obrigatoria,importante,opcional',
+            'status' => 'required|in:solicitado,em_analise,confirmado,realizado,cancelado,recusado',
+            'tempo_deslocamento_manual' => 'nullable|integer|min:0',
+            'custo_estimado' => 'nullable|numeric|min:0',
+            'checklist_itens' => 'nullable|array',
+        ]);
+
+        if (in_array($validated['status'], ['confirmado', 'realizado'])) {
+            $sobreposicao = Evento::detectarSobreposicao(
+                $validated['data_hora_inicio'],
+                $validated['data_hora_fim'],
+                $evento->id,
+                $validated['responsavel_id'] ?? null
+            );
+
+            if ($sobreposicao) {
+                return back()->withErrors([
+                    'data_hora_inicio' => 'Conflito de Horário detectado com outro evento confirmado neste período.'
+                ])->withInput();
+            }
+        }
+
+        $checklist = [];
+        if ($request->filled('checklist_itens')) {
+            $checklistAntigo = $evento->checklist ?? [];
+            foreach ($request->checklist_itens as $idx => $item) {
+                if (trim($item) !== '') {
+                    $concluido = $checklistAntigo[$idx]['concluido'] ?? false;
+                    $checklist[] = ['titulo' => trim($item), 'concluido' => $concluido];
+                }
+            }
+        }
+
+        $evento->update([
+            'titulo' => $validated['titulo'],
+            'tipo' => $validated['tipo'],
+            'descricao' => $validated['descricao'] ?? null,
+            'data_hora_inicio' => $validated['data_hora_inicio'],
+            'data_hora_fim' => $validated['data_hora_fim'],
+            'endereco' => $validated['endereco'] ?? null,
+            'bairro_id' => $validated['bairro_id'] ?? null,
+            'responsavel_id' => $validated['responsavel_id'] ?? null,
+            'prioridade' => $validated['prioridade'],
+            'status' => $validated['status'],
+            'tempo_deslocamento_manual' => $validated['tempo_deslocamento_manual'] ?? 0,
+            'custo_estimado' => $validated['custo_estimado'] ?? 0.00,
+            'checklist' => $checklist,
+        ]);
+
+        LogAuditoria::registrar(auth()->id(), 'alteracao', 'eventos', $evento->id, $anterior, $evento->toArray());
+
+        Timeline::registrar(
+            'evento.atualizado',
+            "Evento '{$evento->titulo}' foi atualizado",
+            "Início: " . $evento->data_hora_inicio->format('d/m/Y H:i') . " | Status: " . ucfirst($evento->status),
+            auth()->id(),
+            $evento
+        );
+
+        return redirect()->route('eventos.index')->with('success', 'Evento atualizado com sucesso!');
+    }
+
     public function updateStatus(Request $request, int $id)
     {
         $request->validate([

@@ -47,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
     // Módulo 4: Agenda e Eventos
     Route::get('/eventos', [EventoController::class, 'index'])->name('eventos.index');
     Route::post('/eventos', [EventoController::class, 'store'])->name('eventos.store');
+    Route::put('/eventos/{id}', [EventoController::class, 'update'])->name('eventos.update');
     Route::post('/eventos/{id}/status', [EventoController::class, 'updateStatus']);
     Route::post('/eventos/{id}/checklist/{itemIndex}', [EventoController::class, 'toggleChecklistItem']);
     Route::post('/eventos/{id}/deletar', [EventoController::class, 'remover'])->name('eventos.destroy');

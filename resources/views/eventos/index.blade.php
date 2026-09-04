@@ -143,6 +143,26 @@
                     <div class="flex flex-row lg:flex-col items-end gap-3 justify-end pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-200 dark:border-slate-800">
                         <span class="text-xs font-semibold text-slate-500 uppercase">Alterar Status:</span>
                         <div class="flex flex-wrap gap-1.5">
+                            @if(auth()->user()->hasRole(['admin', 'coordenador', 'agenda']) || auth()->user()->can('eventos.editar'))
+                                <button onclick="abrirModalEdicao({{ json_encode([
+                                    'id' => $evento->id,
+                                    'titulo' => $evento->titulo,
+                                    'tipo' => $evento->tipo,
+                                    'descricao' => $evento->descricao,
+                                    'data_hora_inicio' => $evento->data_hora_inicio ? $evento->data_hora_inicio->format('Y-m-d\TH:i') : '',
+                                    'data_hora_fim' => $evento->data_hora_fim ? $evento->data_hora_fim->format('Y-m-d\TH:i') : '',
+                                    'endereco' => $evento->endereco,
+                                    'bairro_id' => $evento->bairro_id,
+                                    'responsavel_id' => $evento->responsavel_id,
+                                    'prioridade' => $evento->prioridade,
+                                    'status' => $evento->status,
+                                    'tempo_deslocamento_manual' => $evento->tempo_deslocamento_manual,
+                                    'custo_estimado' => $evento->custo_estimado,
+                                    'checklist' => $evento->checklist ?? [],
+                                ]) }})" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded transition">
+                                    ✏️ Editar
+                                </button>
+                            @endif
                             @if($evento->status !== 'confirmado')
                                 <button onclick="updateEventoStatus({{ $evento->id }}, 'confirmado')" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded transition">Confirmar</button>
                             @endif
@@ -303,9 +323,181 @@
     </div>
 </div>
 
+<!-- Modal Editar Evento -->
+<div id="modal-editar-evento" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+        <div class="flex items-center justify-between mb-6 pb-2 border-b border-slate-200 dark:border-slate-800">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">✏️ Editar Evento de Campanha</h3>
+            <button onclick="toggleModal('modal-editar-evento')" class="text-slate-400 hover:text-slate-600 focus:outline-none">✕</button>
+        </div>
+
+        <form id="form-editar-evento" method="POST" class="space-y-4">
+            @csrf
+            @method('PUT')
+            
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase">Título do Evento*</label>
+                <input type="text" id="edit_titulo" name="titulo" required max="150"
+                    class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Tipo*</label>
+                    <select id="edit_tipo" name="tipo" required
+                        class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+                        <option value="caminhada">Caminhada</option>
+                        <option value="reuniao">Reunião</option>
+                        <option value="entrevista">Entrevista</option>
+                        <option value="gravacao">Gravação</option>
+                        <option value="visita">Visita</option>
+                        <option value="acao_rua">Ação de Rua</option>
+                        <option value="compromisso_interno">Compromisso Interno</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Prioridade</label>
+                    <select id="edit_prioridade" name="prioridade"
+                        class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+                        <option value="importante">Importante</option>
+                        <option value="obrigatoria">Obrigatória</option>
+                        <option value="opcional">Opcional</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase">Descrição</label>
+                <textarea id="edit_descricao" name="descricao" rows="2"
+                    class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Início*</label>
+                    <input type="datetime-local" id="edit_data_hora_inicio" name="data_hora_inicio" required
+                        class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Término*</label>
+                    <input type="datetime-local" id="edit_data_hora_fim" name="data_hora_fim" required
+                        class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase">Endereço Completo</label>
+                <input type="text" id="edit_endereco" name="endereco" max="255"
+                    class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Bairro de Limeira</label>
+                    <select id="edit_bairro_id" name="bairro_id"
+                        class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+                        <option value="">Nenhum/Geral</option>
+                        @foreach($bairros as $br)
+                            <option value="{{ $br->id }}">{{ $br->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Responsável Interno</label>
+                    <select id="edit_responsavel_id" name="responsavel_id"
+                        class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+                        <option value="">Sem responsável</option>
+                        @foreach($usuarios as $usr)
+                            <option value="{{ $usr->id }}">{{ $usr->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Deslocamento Recomendado (Minutos)</label>
+                    <input type="number" id="edit_tempo_deslocamento_manual" name="tempo_deslocamento_manual" min="0"
+                        class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Status</label>
+                    <select id="edit_status" name="status"
+                        class="mt-1 block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary">
+                        <option value="solicitado">Solicitado</option>
+                        <option value="em_analise">Em Análise</option>
+                        <option value="confirmado">Confirmado</option>
+                        <option value="realizado">Realizado</option>
+                        <option value="cancelado">Cancelado</option>
+                        <option value="recusado">Recusado</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Checklist Logística do Evento (Edição) -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase">Checklist Logístico</label>
+                <div id="edit-evento-checklist-inputs" class="space-y-2 mt-1">
+                </div>
+                <button type="button" onclick="adicionarInputChecklistEventoEdicao()" class="mt-2 text-xs text-secondary hover:underline">+ Adicionar item de checklist</button>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onclick="toggleModal('modal-editar-evento')" 
+                    class="px-4 py-2 border border-slate-300 dark:border-slate-750 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-850">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                    class="px-4 py-2 bg-secondary hover:bg-emerald-500 text-white text-sm font-medium rounded-lg">
+                    Atualizar Evento
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     function toggleModal(id) {
         document.getElementById(id).classList.toggle('hidden');
+    }
+
+    function abrirModalEdicao(evento) {
+        document.getElementById('form-editar-evento').action = '/eventos/' + evento.id;
+        document.getElementById('edit_titulo').value = evento.titulo || '';
+        document.getElementById('edit_tipo').value = evento.tipo || 'caminhada';
+        document.getElementById('edit_prioridade').value = evento.prioridade || 'importante';
+        document.getElementById('edit_descricao').value = evento.descricao || '';
+        document.getElementById('edit_data_hora_inicio').value = evento.data_hora_inicio || '';
+        document.getElementById('edit_data_hora_fim').value = evento.data_hora_fim || '';
+        document.getElementById('edit_endereco').value = evento.endereco || '';
+        document.getElementById('edit_bairro_id').value = evento.bairro_id || '';
+        document.getElementById('edit_responsavel_id').value = evento.responsavel_id || '';
+        document.getElementById('edit_tempo_deslocamento_manual').value = evento.tempo_deslocamento_manual || 0;
+        document.getElementById('edit_status').value = evento.status || 'solicitado';
+
+        const wrapper = document.getElementById('edit-evento-checklist-inputs');
+        wrapper.innerHTML = '';
+        if (evento.checklist && evento.checklist.length > 0) {
+            evento.checklist.forEach((item, idx) => {
+                adicionarInputChecklistEventoEdicao(item.titulo || '');
+            });
+        } else {
+            adicionarInputChecklistEventoEdicao('');
+        }
+
+        toggleModal('modal-editar-evento');
+    }
+
+    function adicionarInputChecklistEventoEdicao(valor = '') {
+        const wrapper = document.getElementById('edit-evento-checklist-inputs');
+        const count = wrapper.children.length + 1;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.name = 'checklist_itens[]';
+        input.value = valor;
+        input.placeholder = `Item ${count}...`;
+        input.className = 'block w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary';
+        wrapper.appendChild(input);
     }
 
     function adicionarInputChecklistEvento() {
