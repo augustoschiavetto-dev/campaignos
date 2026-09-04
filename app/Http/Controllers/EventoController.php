@@ -31,7 +31,10 @@ class EventoController extends Controller
             $query->whereDate('data_hora_inicio', $request->data);
         }
 
-        $eventos = $query->orderBy('data_hora_inicio')->get();
+        // Ordenação por data (asc por padrão ou desc)
+        $ordem = strtolower($request->input('ordem', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        $eventos = $query->orderBy('data_hora_inicio', $ordem)->get();
         $bairros = Bairro::orderBy('nome')->get();
         $usuarios = User::where('status', 'ativo')->get();
 

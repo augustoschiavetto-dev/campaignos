@@ -50,7 +50,14 @@
                 <input type="date" name="data" value="{{ request('data') }}" onchange="this.form.submit()"
                     class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-850 dark:text-white">
             </div>
-            @if(request()->anyFilled(['status', 'tipo', 'data']))
+            <div>
+                <select name="ordem" onchange="this.form.submit()" 
+                    class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-850 dark:text-white">
+                    <option value="asc" {{ request('ordem', 'asc') === 'asc' ? 'selected' : '' }}>📅 Data: Mais Antigos Primeiro</option>
+                    <option value="desc" {{ request('ordem') === 'desc' ? 'selected' : '' }}>📅 Data: Mais Recentes Primeiro</option>
+                </select>
+            </div>
+            @if(request()->anyFilled(['status', 'tipo', 'data']) || (request()->filled('ordem') && request('ordem') !== 'asc'))
                 <a href="{{ route('eventos.index') }}" class="text-xs text-red-500 hover:underline">Limpar Filtros</a>
             @endif
         </form>
